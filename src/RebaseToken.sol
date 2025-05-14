@@ -15,14 +15,14 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
  * rate at the time they have deposited
  */
 
-contract RebaseToken is ERC20, Ownable,AccessControl {
+contract RebaseToken is ERC20, Ownable, AccessControl {
     error RebaseToken__InterestRateCanOnlyDecrease(uint256 interestRate, uint256 newInterestRate);
 
     event NewInterestRate(uint256 indexed newInterestRate);
 
     uint256 private constant PRECISION_FACTOR = 1 * 10 ** 18;
     bytes32 private constant MINT_AND_BURN_ROLE = keccak256("MINT_AND_BURN_ROLE");
-    uint256 private s_interestRate = 5 * 10 ** 10;
+    uint256 private s_interestRate = (5 * PRECISION_FACTOR) / 1e8;
     mapping(address => uint256) private s_userInterestRate;
     mapping(address => uint256) private s_userLastUpdatedTimestamp;
 
@@ -60,7 +60,11 @@ contract RebaseToken is ERC20, Ownable,AccessControl {
      * @param _amount The amount of tokens to mint
      */
 
-    function mint(address _to, uint256 _amount) external onlyRole(MINT_AND_BURN_ROLE){
+    function mint(address _to, uint256 _amount) external onlyRole(MINT_AND_BURN_ROLE) {
+        // If this is the user's first interaction, initialize their timestamp
+        if (s_userLastUpdatedTimestamp[_to] == 0) {
+            s_userLastUpdatedTimestamp[_to] = block.timestamp;
+        }
         _mintAccruedInterest(_to);
         s_userInterestRate[_to] = s_interestRate;
         _mint(_to, _amount);
@@ -160,10 +164,10 @@ contract RebaseToken is ERC20, Ownable,AccessControl {
         uint256 currentBalance = balanceOf(_user);
         //calculate the number of tokens that need to be minted to the user-> (2)-(1)
         uint256 numberOfTokens = currentBalance - previousPrincipleBalance;
-        //set the users last updated timestamp
-        s_userLastUpdatedTimestamp[_user] = block.timestamp;
         //call _mint to mint tokens to the user
         _mint(_user, numberOfTokens);
+        // Update the user's last updated timestamp to reflect this most recent time their interest was minted to them.
+        s_userLastUpdatedTimestamp[_user] = block.timestamp;
     }
     /**
      * @notice get the interest rate for the conctract
@@ -180,5 +184,8 @@ contract RebaseToken is ERC20, Ownable,AccessControl {
 
     function getUserInterestRate(address _user) external view returns (uint256) {
         return s_userInterestRate[_user];
+    }
+    function principalBalanceOf(address _user) external view returns(uint256){
+        return super.balanceOf(_user);
     }
 }
