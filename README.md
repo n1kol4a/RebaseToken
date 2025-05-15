@@ -1,4 +1,4 @@
-# Cross-chain Rebase Token
+#  Rebase Token
 1. Protocol that allows user to deposit into a vault and in return recieve rebase tokens that represent their underlying balance
 
 2. Rebase token - balanceOf function is dynamic to show the changing balance over time
